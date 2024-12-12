@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>漫游式引导功能</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .step {
+            margin: 50px;
+            padding: 20px;
+            border: 1px solid black;
+        }
+
+        .mask {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 9999;
+            pointer-events: none;
+        }
+
+        #tooltip {
+            position: absolute;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <button id="start-tour">开始引导</button>
+        <div class="step" id="step1">这是步骤 1 的内容</div>
+        <div class="step" id="step2">这是步骤 2 的内容</div>
+        <div class="step" id="step3">这是步骤 3 的内容</div>
+    </div>
+    <script>
+        class TourGuide {
+            constructor(steps, options = {}) {
+                this.steps = steps;
+                this.currentStep = 0;
+                this.options = {
+                    maskColor: 'rgba(0, 0, 0, 0.7)',
+                    tooltipPosition: 'bottom',
+                    ...options
+                };
+            }
+
+            createMask() {
+                const maskDirections = ['top', 'bottom', 'left', 'right'];
+                this.masks = {};
+
+                maskDirections.forEach(direction => {
+                    const mask = document.createElement("div");
+                    mask.classList.add("mask");
+                    mask.id = `mask-${direction}`;
+                    mask.style.backgroundColor = this.options.maskColor;
+                    document.body.appendChild(mask);
+                    this.masks[direction] = mask;
+                });
+            }
+
+            createTooltip() {
+                this.tooltip = document.createElement("div");
+                this.tooltip.id = "tooltip";
+                document.body.appendChild(this.tooltip);
+            }
+
+            updateStep() {
+                const { element, content, tooltipPosition } = this.steps[this.currentStep];
+                const target = document.querySelector(element);
+
+                if (!target) return;
+
+                const rect = target.getBoundingClientRect();
+                const { top, bottom, left, right, height } = rect;
+
+                // 更新遮罩层
+                this.masks.top.style.cssText = `top: 0; left: 0; width: 100vw; height: ${top}px`;
+                this.masks.bottom.style.cssText = `top: ${bottom}px; left: 0; width: 100vw; height: calc(100vh - ${bottom}px)`;
+                this.masks.left.style.cssText = `top: ${top}px; left: 0; width: ${left}px; height: ${height}px`;
+                this.masks.right.style.cssText = `top: ${top}px; left: ${right}px; width: calc(100vw - ${right}px); height: ${height}px`;
+
+                // 设置提示框
+                this.tooltip.innerHTML = content;
+
+                // 根据配置的位置或步骤中指定的位置设置提示框位置
+                const position = tooltipPosition || this.options.tooltipPosition;
+                switch (position) {
+                    case 'top':
+                        this.tooltip.style.left = `${left}px`;
+                        this.tooltip.style.top = `${top - 10 - this.tooltip.offsetHeight}px`;
+                        break;
+                    case 'bottom':
+                    default:
+                        this.tooltip.style.left = `${left}px`;
+                        this.tooltip.style.top = `${bottom + 10}px`;
+                        break;
+                    case 'left':
+                        this.tooltip.style.left = `${left - 10 - this.tooltip.offsetWidth}px`;
+                        this.tooltip.style.top = `${top}px`;
+                        break;
+                    case 'right':
+                        this.tooltip.style.left = `${right + 10}px`;
+                        this.tooltip.style.top = `${top}px`;
+                        break;
+                }
+            }
+
+            nextStep() {
+                this.currentStep++;
+                if (this.currentStep < this.steps.length) {
+                    this.updateStep();
+                } else {
+                    this.endTour();
+                }
+            }
+
+            startTour() {
+                this.currentStep = 0;
+                this.createMask();
+                this.createTooltip();
+                this.updateStep();
+
+                this.tooltip.addEventListener("click", () => this.nextStep());
+            }
+
+            endTour() {
+                Object.values(this.masks).forEach(mask => mask.remove());
+                this.tooltip.remove();
+            }
+        }
+
+        // 使用示例
+        const steps = [
+            {
+                element: "#step1",
+                content: "这是第一步的引导内容",
+                tooltipPosition: 'bottom' // 可选：覆盖全局配置
+            },
+            {
+                element: "#step2",
+                content: "这是第二步的引导内容",
+                tooltipPosition: 'top'
+            },
+            {
+                element: "#step3",
+                content: "这是第三步的引导内容",
+                tooltipPosition: 'right'
+            }
+        ];
+
+        const tourGuide = new TourGuide(steps, {
+            maskColor: 'rgba(0, 0, 0, 0.8)', // 可选：自定义遮罩颜色
+            tooltipPosition: 'bottom' // 可选：全局默认位置
+        });
+
+        document.getElementById("start-tour").addEventListener("click", () => tourGuide.startTour());
+    </script>
+</body>
+
+</html>

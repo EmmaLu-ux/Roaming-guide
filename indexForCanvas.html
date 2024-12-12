@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas 漫游式引导</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: white;
+            /* 页面背景色保持白色 */
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .step {
+            margin: 50px;
+            padding: 20px;
+            border: 1px solid black;
+        }
+
+        #guide-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            /* 遮罩不可交互 */
+            z-index: 9999;
+        }
+
+        #tooltip {
+            position: absolute;
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 10000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <button id="start-tour">开始引导</button>
+        <div class="step" id="step1">这是步骤 1 的内容</div>
+        <div class="step" id="step2">这是步骤 2 的内容</div>
+        <div class="step" id="step3">这是步骤 3 的内容</div>
+    </div>
+    <canvas id="guide-canvas"></canvas>
+    <script>
+        const steps = [
+            { element: "#step1", content: "这是第一步的引导内容" },
+            { element: "#step2", content: "这是第二步的引导内容" },
+            { element: "#step3", content: "这是第三步的引导内容" },
+        ];
+
+        let currentStep = 0;
+        let canvas, ctx, tooltip;
+
+        const createCanvas = () => {
+            canvas = document.getElementById("guide-canvas");
+            ctx = canvas.getContext("2d");
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+
+        const createTooltip = () => {
+            tooltip = document.createElement("div");
+            tooltip.id = "tooltip";
+            document.body.appendChild(tooltip);
+        };
+
+        const drawMask = (rect) => {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制全屏遮罩
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 创建高亮区域（挖洞）
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.fillStyle = "rgba(0, 0, 255, 1)"; // 这个颜色不重要，因为是tx.globalCompositeOperation = "destination-out";了，所以会挖掉
+            ctx.beginPath();
+            ctx.roundRect(rect.left, rect.top, rect.width, rect.height, 8); // 圆角矩形
+            ctx.fill();
+
+            // 恢复绘图模式
+            ctx.globalCompositeOperation = "source-over";
+        };
+
+        const updateStep = () => {
+            const { element, content } = steps[currentStep];
+            const target = document.querySelector(element);
+
+            if (!target) return;
+
+            const rect = target.getBoundingClientRect();
+
+            // 更新遮罩
+            drawMask(rect);
+
+            // 更新提示框内容和位置
+            tooltip.innerHTML = content;
+            tooltip.style.left = `${rect.left}px`;
+            tooltip.style.top = `${rect.bottom + 10}px`;
+        };
+
+        const nextStep = () => {
+            currentStep++;
+            if (currentStep < steps.length) {
+                updateStep();
+            } else {
+                endTour();
+            }
+        };
+
+        const startTour = () => {
+            currentStep = 0;
+            createCanvas();
+            createTooltip();
+            updateStep();
+
+            // 添加事件监听
+            tooltip.addEventListener("click", nextStep);
+        };
+
+        const endTour = () => {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 移除提示框
+            tooltip.remove();
+        };
+
+        document.getElementById("start-tour").addEventListener("click", startTour);
+
+    </script>
+</body>
+
+</html>
